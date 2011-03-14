@@ -1,0 +1,71 @@
+= shp2db
+
+Shapefile to Database was born out of the necessity to convert the polygons found in TIGER/ESRI files into records in a relational database.
+
+You can use this application to populate any database that Ruby {ActiveRecord}[http://ar.rubyonrails.org/] supports
+
+== Database Schema
+shp2db is intended to work with just about any reasonable database schema, but does make a few assumptions about your schema.
+
+* There are two databases
+  * A "shapes" database which will contain information about each polygon stored in the shapefile
+  * A "points" database which contains vertices for the polygons in the "shapes" database
+* The "points" database has a foreign key reference to the "shapes" database.  I.E. shapes_id
+* The "points" database has 3 mandatory fields.
+  * longitude (float)
+  * latitude (float)
+  * ordering (int)
+
+Beyond that, there aren't any hard requirements.
+
+The points and shapes database tables can have any name that works in your schema.  By default shp2db assumes they are called "shapes" and "points", but you can override that by supplying the --db_shape_table and --db_point_table switches.
+
+shp2db will populate the following fields of the "shapes" table, if they exist;
+* latitude_min (float)
+* latitude_max (float)
+* longitude_min (float)
+* longitude_max (float)
+* source (varchar(32)) - The name of the original shapefile
+
+shp2db will also populate any fields in the "shapes" table which match the name of attributes found in the shapefile.  You can compare the database schema for the "shapes" table against the attributes available in the shapefile by using the --fields_only switch.
+
+Example Output:
+  Database                Shapefile
+  name                    name
+  latitude_max
+  latitude_min
+  longitude_max
+  longitude_min
+  source
+                          aiannhce
+                          aiannhns
+                          aiannhid
+                          namelsad
+                          lsad
+                          comptyp
+                          classfp
+                          aiannhr
+                          mtfcc
+                          funcstat
+                          aland
+                          awater
+                          intptlat
+                          intptlon
+
+In the above example, only the "name" attribute (in addition to the bounding box & source fields) for each shape in the shapefile will be stored.  If we wanted to also store the "funcstat" value, we would just extend the schema of our "shapes" table to accomodate it.
+
+== Contributing to shp2db
+ 
+* Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
+* Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it
+* Fork the project
+* Start a feature/bugfix branch
+* Commit and push until you are happy with your contribution
+* Make sure to add tests for it. This is important so I don't break it in a future version unintentionally.
+* Please try not to mess with the Rakefile, version, or history. If you want to have your own version, or is otherwise necessary, that is fine, but please isolate to its own commit so I can cherry-pick around it.
+
+== Copyright
+
+Copyright (c) 2011 Ryan J. Geyer. See LICENSE for
+further details.
+
