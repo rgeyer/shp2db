@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 #  Copyright 2011 Ryan J. Geyer
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -25,7 +27,7 @@ options = {}
 optparse = OptionParser.new do |opts|
   # Set a banner, displayed at the top
   # of the help screen.
-  opts.banner = "Usage: shp_2_mysql.rb [options]"
+  opts.banner = "Usage: shp2db [options]"
   options[:shapefile]
   opts.on( '-f', '--shape_file FILE', 'Full path to a TIGER shapefile' ) do |shapefile|
     options[:shapefile] = shapefile
@@ -79,18 +81,6 @@ begin
   STDERR.puts optparse
   exit(-1)
 end
-
-#options = {
-#  :fields_only => true,
-#  :shapefile => '/Volumes/main-mirror/2000 US Census ShpFiles/tr01_d00_shp/tr01_d00.shp',
-#  :dbtype => 'mysql',
-#  :dbhost => 'localhost',
-#  :dbname => 'addr_grid_test',
-#  :dbuser => 'root',
-#  :dbpass => nil,
-#  :db_shape_table => 'shapes',
-#  :db_point_table => 'points'
-#}
 
 file_basename = File.basename(options[:shapefile])
 spfile = Shapelib::ShapeFile::open(options[:shapefile], 'r')
