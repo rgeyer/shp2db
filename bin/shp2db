@@ -1,0 +1,191 @@
+#  Copyright 2011 Ryan J. Geyer
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+require 'rubygems'
+require 'shapelib'
+require 'optparse'
+require 'active_record'
+require 'yaml'
+require 'lib/stdout'
+
+include Shapelib
+
+options = {}
+
+optparse = OptionParser.new do |opts|
+  # Set a banner, displayed at the top
+  # of the help screen.
+  opts.banner = "Usage: shp_2_mysql.rb [options]"
+  options[:shapefile]
+  opts.on( '-f', '--shape_file FILE', 'Full path to a TIGER shapefile' ) do |shapefile|
+    options[:shapefile] = shapefile
+  end
+  options[:dbtype]
+  opts.on( '-a', '--db_adapter ADAPTER', 'The ActiveRecord db adapter type' ) do |dbtype|
+    options[:dbtype] = dbtype.downcase
+  end
+  options[:dbhost] = 'localhost'
+  opts.on( '-H', '--db_host HOSTNAME', 'The database hostname.  Default: localhost' ) do |dbhost|
+    options[:dbhost] = dbhost
+  end
+  options[:dbname]
+  opts.on( '-n', '--db_name DBNAME', 'The database name') do |dbname|
+    options[:dbname] = dbname
+  end
+  options[:dbuser]
+  opts.on( '-u', '--db_user DBUSER', 'The database username') do |dbuser|
+    options[:dbuser] = dbuser
+  end
+  options[:dbpass] = nil
+  opts.on( '-p', '--db_pass DBPASS', 'The database password') do |dbpass|
+    options[:dbpass] = dbpass
+  end
+  options[:db_shape_table] = 'shapes'
+  opts.on( '-s', '--db_shape_table', 'The name of the table in the database which will store shape file information.  Default: shapes') do |db_shape_table|
+    options[:db_shape_table] = db_shape_table
+  end
+  options[:db_point_table] = 'points'
+  opts.on( '-P', '--db_point_table', 'The name of the table in the database which will store shape vertices.  Default: points') do |db_point_table|
+    options[:db_point_table] = db_point_table
+  end
+  options[:fields_only] = false
+  opts.on( '-F', '--fields_only', 'Prints the fields in the database and the shapefile, and which fields intersect.') do |fields_only|
+    options[:fields_only] = true
+  end
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    exit
+  end
+end
+
+begin
+	optparse.parse!
+  raise OptionParser::MissingArgument if options[:shapefile].nil?
+  raise OptionParser::MissingArgument if options[:dbtype].nil?
+  raise OptionParser::MissingArgument if options[:dbname].nil?
+  raise OptionParser::MissingArgument if options[:dbuser].nil?
+	rescue Exception => e
+  STDERR.puts e
+  STDERR.puts optparse
+  exit(-1)
+end
+
+#options = {
+#  :fields_only => true,
+#  :shapefile => '/Volumes/main-mirror/2000 US Census ShpFiles/tr01_d00_shp/tr01_d00.shp',
+#  :dbtype => 'mysql',
+#  :dbhost => 'localhost',
+#  :dbname => 'addr_grid_test',
+#  :dbuser => 'root',
+#  :dbpass => nil,
+#  :db_shape_table => 'shapes',
+#  :db_point_table => 'points'
+#}
+
+file_basename = File.basename(options[:shapefile])
+spfile = Shapelib::ShapeFile::open(options[:shapefile], 'r')
+
+ActiveRecord::Base.establish_connection(
+  :adapter  => options[:dbtype],
+  :host     => options[:dbhost],
+  :database => options[:dbname],
+  :username => options[:dbuser],
+  :password => options[:dbpass]
+)
+
+# Create the classes for activerecord
+shpklass = Class.new(ActiveRecord::Base)
+Object.const_set(options[:db_shape_table].capitalize, shpklass)
+shpklass.class_eval do
+  has_many :points, :class_name => options[:db_point_table].capitalize
+end
+
+pntklass = Class.new(ActiveRecord::Base)
+Object.const_set(options[:db_point_table].capitalize, pntklass)
+
+# Fetch the available fields from the DB, and from the shapefile
+db_shpattrs = shpklass.new().attribute_names().collect {|it| it.downcase}
+file_shpattrs = spfile.fields.collect {|it| it.downcase}
+
+# Just show the fields
+if options[:fields_only]
+  stdoutlib = FormattedStdout.new(24)
+  stdoutlib.put_columns([{:value => 'Database', :ansi_codes => [4,1,34]}, {:value => 'Shapefile', :ansi_codes => [4,1,34]}])
+
+  # Intersect
+  (db_shpattrs & file_shpattrs).each do |attr|
+    stdoutlib.put_columns([
+      {:value => attr, :ansi_codes => [32]},
+      {:value => attr, :ansi_codes => [32]}
+    ])
+  end
+
+  # DB Diff
+  (db_shpattrs - file_shpattrs).each do |attr|
+    stdoutlib.put_columns([
+      {:value => attr}
+    ])
+  end
+
+  # Shapefile Diff
+  (file_shpattrs - db_shpattrs).each do |attr|
+    stdoutlib.put_columns([
+      {:value => ''},
+      {:value => attr}
+    ])
+  end
+
+  exit 0
+end
+
+# Check to see if we've already processed this source file, and bail if so
+if db_shpattrs.include?('source')
+  if shpklass.where(:source => file_basename).count >= 1
+    puts "Looks like you've already processed a file named #{file_basename}.  Exitting..."
+    exit 0
+  end
+end
+
+# Push them shapefiles into the DB
+spfile.each do |shape|
+  shapehash = shape.to_h
+  minbound = shape.minbound
+  maxbound = shape.maxbound
+
+  dbhash = {
+    :longitude_min => minbound[0],
+    :latitude_min => minbound[1],
+    :longitude_max => maxbound[0],
+    :latitude_max => maxbound[1],
+    :source => file_basename
+  }
+
+  shapehash.each do |key,val|
+    if db_shpattrs.include?(key.to_s.downcase)
+      dbhash[key.to_s.downcase] = val
+    end
+  end
+
+  dbhash.delete_if do |key,val|
+    !db_shpattrs.include?(key.to_s.downcase)
+  end
+
+  dbshape = shpklass.create(dbhash)
+  idx = 0
+  shape.each do |point|
+    pntklass.create("#{options[:db_shape_table]}_id" => dbshape.id, :latitude => point[0], :longitude => point[1], :ordering => idx)
+    idx += 1
+  end
+end
+
+spfile.close
