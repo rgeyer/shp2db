@@ -29,6 +29,7 @@ Gem::Specification.new do |s|
     "VERSION",
     "bin/shp2db",
     "lib/stdout.rb",
+    "shp2db.gemspec",
     "test/helper.rb",
     "test/test_shp2db.rb"
   ]
