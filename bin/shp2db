@@ -60,6 +60,14 @@ optparse = OptionParser.new do |opts|
   opts.on( '-P', '--db_point_table', 'The name of the table in the database which will store shape vertices.  Default: points') do |db_point_table|
     options[:db_point_table] = db_point_table
   end
+  options[:offset] = 0
+  opts.on( '-O', '--offset OFFSET', 'The offset (0 indexed) of the first shape to convert. Useful for chunking a very big shape file') do |offset|
+    options[:offset] = offset.to_i
+  end
+  options[:count] = nil
+  opts.on( '-C', '--count COUNT', 'The number of shapes to convert, starting at --offset.  If --offset + --count is greater than the number of available shapes, only the available shapes in the range will be converted. Useful for chunking a very big shape file') do |count|
+    options[:count] = count.to_i
+  end
   options[:fields_only] = false
   opts.on( '-F', '--fields_only', 'Prints the fields in the database and the shapefile, and which fields intersect.') do |fields_only|
     options[:fields_only] = true
@@ -83,8 +91,12 @@ begin
 end
 
 file_basename = File.basename(options[:shapefile])
+
+puts "Loading Shapefile (#{file_basename})..."
+
 spfile = Shapelib::ShapeFile::open(options[:shapefile], 'r')
 
+puts "Establishing Database Connection - #{options[:dbname]} on #{options[:dbhost]} with adapter #{options[:dbtype]} identified by #{options[:dbuser]}"
 ActiveRecord::Base.establish_connection(
   :adapter  => options[:dbtype],
   :host     => options[:dbhost],
@@ -138,16 +150,22 @@ if options[:fields_only]
   exit 0
 end
 
+# Not really compatible with chunking..
+
 # Check to see if we've already processed this source file, and bail if so
-if db_shpattrs.include?('source')
-  if shpklass.where(:source => file_basename).count >= 1
-    puts "Looks like you've already processed a file named #{file_basename}.  Exitting..."
-    exit 0
-  end
-end
+#if db_shpattrs.include?('source')
+#  if shpklass.where(:source => file_basename).count >= 1
+#    puts "Looks like you've already processed a file named #{file_basename}.  Exiting..."
+#    exit 0
+#  end
+#end
 
 # Push them shapefiles into the DB
-spfile.each do |shape|
+shape_idx = options[:offset]
+range_end = spfile.size
+range_end = options[:count] + options[:offset] if options[:count]
+shape = spfile.read(shape_idx)
+while (shape_idx < range_end && shape)
   shapehash = shape.to_h
   minbound = shape.minbound
   maxbound = shape.maxbound
@@ -176,6 +194,10 @@ spfile.each do |shape|
     pntklass.create("#{options[:db_shape_table]}_id" => dbshape.id, :latitude => point[0], :longitude => point[1], :ordering => idx)
     idx += 1
   end
+  shape = spfile.read
+  shape_idx += 1
 end
+
+puts "Converted #{range_end - options[:offset]}/#{spfile.size} shapes"
 
 spfile.close
