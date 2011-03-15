@@ -18,7 +18,9 @@ require 'shapelib'
 require 'optparse'
 require 'active_record'
 require 'yaml'
-require 'lib/stdout'
+
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require 'stdout'
 
 include Shapelib
 
