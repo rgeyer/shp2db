@@ -7,6 +7,7 @@ You can use this application to populate any database that Ruby {ActiveRecord}[h
 == Database Schema
 shp2db is intended to work with just about any reasonable database schema, but does make a few assumptions about your schema.
 
+=== Prerequisites
 * There are two databases
   * A "shapes" database which will contain information about each polygon stored in the shapefile
   * A "points" database which contains vertices for the polygons in the "shapes" database
@@ -18,8 +19,10 @@ shp2db is intended to work with just about any reasonable database schema, but d
 
 Beyond that, there aren't any hard requirements.
 
+=== Table Names
 The points and shapes database tables can have any name that works in your schema.  By default shp2db assumes they are called "shapes" and "points", but you can override that by supplying the --db_shape_table and --db_point_table switches.
 
+=== Shapes Table Options
 shp2db will populate the following fields of the "shapes" table, if they exist;
 * latitude_min (float)
 * latitude_max (float)
