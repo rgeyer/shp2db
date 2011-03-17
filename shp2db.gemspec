@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{shp2db}
-  s.version = "0.1.0"
+  s.version = "0.1.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Ryan J. Geyer"]
-  s.date = %q{2011-03-14}
+  s.date = %q{2011-03-16}
   s.default_executable = %q{shp2db}
   s.description = %q{Converts TIGER shapefiles to relational databases using ActiveRecord}
   s.email = %q{me@ryangeyer.com}
