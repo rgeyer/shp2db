@@ -38,7 +38,7 @@ optparse = OptionParser.new do |opts|
   opts.on( '-a', '--db_adapter ADAPTER', 'The ActiveRecord db adapter type' ) do |dbtype|
     options[:dbtype] = dbtype.downcase
   end
-  options[:dbhost] = 'localhost'
+  options[:dbhost] = "localhost"
   opts.on( '-H', '--db_host HOSTNAME', 'The database hostname.  Default: localhost' ) do |dbhost|
     options[:dbhost] = dbhost
   end
@@ -54,12 +54,12 @@ optparse = OptionParser.new do |opts|
   opts.on( '-p', '--db_pass DBPASS', 'The database password') do |dbpass|
     options[:dbpass] = dbpass
   end
-  options[:db_shape_table] = 'shapes'
-  opts.on( '-s', '--db_shape_table', 'The name of the table in the database which will store shape file information.  Default: shapes') do |db_shape_table|
+  options[:db_shape_table] = "shapes"
+  opts.on( '-s', '--db_shape_table DBSHAPETABLE', 'The name of the table in the database which will store shape file information.  Default: shapes') do |db_shape_table|
     options[:db_shape_table] = db_shape_table
   end
-  options[:db_point_table] = 'points'
-  opts.on( '-P', '--db_point_table', 'The name of the table in the database which will store shape vertices.  Default: points') do |db_point_table|
+  options[:db_point_table] = "points"
+  opts.on( '-P', '--db_point_table DBPOINTTABLE', 'The name of the table in the database which will store shape vertices.  Default: points') do |db_point_table|
     options[:db_point_table] = db_point_table
   end
   options[:offset] = 0
